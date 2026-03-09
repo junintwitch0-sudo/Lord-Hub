@@ -1,0 +1,761 @@
+-- LORDHUB v1.0 - Fuja do Tsunami pra Brainrots
+-- Base: Rayfield UI
+-- Features: Autofarm (osakatp2), Godmode (vinz hub), e muito mais!
+-- Desenvolvido para máxima eficiência no jogo
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+	Name = "LORDHUB v1.0",
+	LoadingTitle = "Carregando LORDHUB...",
+	LoadingSubtitle = "Fuja do Tsunami pra Brainrots",
+	ConfigurationSaving = {
+		Enabled = true,
+		FolderName = "LORDHUB",
+		FileName = "Config"
+	},
+	Discord = {
+		Enabled = false,
+		Invite = "noinvitelink",
+		RememberJoins = true
+	},
+	KeySystem = false,
+	KeySettings = {
+		Title = "LORDHUB Key System",
+		Subtitle = "Key System",
+		Note = "No key required",
+		FileName = "LORDHUBKey",
+		SaveKey = true,
+		SaveKeyFile = true,
+		Function = function(Key)
+			if Key == "Correct" then
+				Rayfield:Notify({
+					Title = "Sucesso!",
+					Content = "Chave correta!",
+					Duration = 6.5,
+					Image = 4483362458,
+				})
+			else
+				Rayfield:Notify({
+					Title = "Erro!",
+					Content = "Chave incorreta!",
+					Duration = 6.5,
+					Image = 4483362458,
+				})
+			end
+		end
+	}
+})
+
+-- ============================================
+-- VARIÁVEIS GLOBAIS
+-- ============================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+
+-- Estados das features
+local Features = {
+	AutoFarm = false,
+	Godmode = false,
+	SpeedBoost = false,
+	JumpBoost = false,
+	NoClip = false,
+	ESPPlayers = false,
+	KillAll = false,
+	TeleportToPlayers = false,
+	AutoCollect = false
+}
+
+-- Variáveis de controle
+local AutoFarmConnection = nil
+local GodmodeConnection = nil
+local SpeedConnection = nil
+local JumpConnection = nil
+local NoClipConnection = nil
+local AutoCollectConnection = nil
+local ESPDrawings = {}
+
+-- ============================================
+-- FUNÇÕES AUXILIARES
+-- ============================================
+
+local function GetCharacter()
+	return LocalPlayer.Character
+end
+
+local function GetHumanoid()
+	local char = GetCharacter()
+	if char then
+		return char:FindFirstChild("Humanoid")
+	end
+	return nil
+end
+
+local function GetHumanoidRootPart()
+	local char = GetCharacter()
+	if char then
+		return char:FindFirstChild("HumanoidRootPart")
+	end
+	return nil
+end
+
+local function TeleportTo(Position)
+	local HRP = GetHumanoidRootPart()
+	if HRP then
+		HRP.CFrame = CFrame.new(Position)
+	end
+end
+
+local function GetAllPlayers()
+	local PlayerList = {}
+	for _, Player in pairs(Players:GetPlayers()) do
+		if Player ~= LocalPlayer then
+			table.insert(PlayerList, Player)
+		end
+	end
+	return PlayerList
+end
+
+local function GetNearestPlayer()
+	local NearestPlayer = nil
+	local NearestDistance = math.huge
+	local HRP = GetHumanoidRootPart()
+	
+	if not HRP then return nil end
+	
+	for _, Player in pairs(GetAllPlayers()) do
+		local PlayerChar = Player.Character
+		if PlayerChar then
+			local PlayerHRP = PlayerChar:FindFirstChild("HumanoidRootPart")
+			if PlayerHRP then
+				local Distance = (HRP.Position - PlayerHRP.Position).Magnitude
+				if Distance < NearestDistance then
+					NearestDistance = Distance
+					NearestPlayer = Player
+				end
+			end
+		end
+	end
+	
+	return NearestPlayer
+end
+
+local function DamagePlayer(Player, Damage)
+	local PlayerHumanoid = Player.Character:FindFirstChild("Humanoid")
+	if PlayerHumanoid then
+		PlayerHumanoid:TakeDamage(Damage)
+	end
+end
+
+-- ============================================
+-- AUTOFARM (Baseado em osakatp2)
+-- ============================================
+
+local function StartAutoFarm()
+	if AutoFarmConnection then
+		AutoFarmConnection:Disconnect()
+	end
+	
+	AutoFarmConnection = RunService.Heartbeat:Connect(function()
+		if not Features.AutoFarm then return end
+		
+		local HRP = GetHumanoidRootPart()
+		if not HRP then return end
+		
+		-- Procura por brainrots/inimigos próximos
+		local NearestEnemy = GetNearestPlayer()
+		
+		if NearestEnemy then
+			local EnemyChar = NearestEnemy.Character
+			if EnemyChar then
+				local EnemyHRP = EnemyChar:FindFirstChild("HumanoidRootPart")
+				if EnemyHRP then
+					-- Move em direção ao inimigo
+					local Direction = (EnemyHRP.Position - HRP.Position).Unit
+					HRP.CFrame = HRP.CFrame + Direction * 0.5
+					
+					-- Ataca o inimigo
+					local Tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+					if Tool then
+						Tool:Activate()
+					end
+				end
+			end
+		end
+		
+		-- Coleta itens no chão
+		local Workspace = game:GetService("Workspace")
+		for _, Item in pairs(Workspace:FindPartBySphere(HRP.Position, 50)) do
+			if Item.Parent and Item.Parent.Name ~= LocalPlayer.Name then
+				if Item:IsA("BasePart") and Item.CanCollide == false then
+					-- Teleporta item para o player
+					Item.CFrame = HRP.CFrame
+				end
+			end
+		end
+	end)
+	
+	Rayfield:Notify({
+		Title = "AutoFarm Ativado",
+		Content = "AutoFarm iniciado com sucesso!",
+		Duration = 4.5,
+		Image = 4483362458,
+	})
+end
+
+local function StopAutoFarm()
+	if AutoFarmConnection then
+		AutoFarmConnection:Disconnect()
+		AutoFarmConnection = nil
+	end
+	
+	Rayfield:Notify({
+		Title = "AutoFarm Desativado",
+		Content = "AutoFarm foi desligado!",
+		Duration = 4.5,
+		Image = 4483362458,
+	})
+end
+
+-- ============================================
+-- GODMODE (Baseado em vinz hub)
+-- ============================================
+
+local function StartGodmode()
+	if GodmodeConnection then
+		GodmodeConnection:Disconnect()
+	end
+	
+	local Humanoid = GetHumanoid()
+	if Humanoid then
+		Humanoid.MaxHealth = math.huge
+		Humanoid.Health = math.huge
+	end
+	
+	GodmodeConnection = RunService.Heartbeat:Connect(function()
+		if not Features.Godmode then return end
+		
+		local Humanoid = GetHumanoid()
+		if Humanoid then
+			Humanoid.Health = Humanoid.MaxHealth
+		end
+		
+		-- Protege contra dano
+		local Character = GetCharacter()
+		if Character then
+			for _, Part in pairs(Character:GetDescendants()) do
+				if Part:IsA("BasePart") then
+					Part.CanCollide = true
+				end
+			end
+		end
+	end)
+	
+	Rayfield:Notify({
+		Title = "Godmode Ativado",
+		Content = "Você é imortal agora!",
+		Duration = 4.5,
+		Image = 4483362458,
+	})
+end
+
+local function StopGodmode()
+	if GodmodeConnection then
+		GodmodeConnection:Disconnect()
+		GodmodeConnection = nil
+	end
+	
+	Rayfield:Notify({
+		Title = "Godmode Desativado",
+		Content = "Godmode foi desligado!",
+		Duration = 4.5,
+		Image = 4483362458,
+	})
+end
+
+-- ============================================
+-- SPEED BOOST
+-- ============================================
+
+local function StartSpeedBoost(SpeedAmount)
+	if SpeedConnection then
+		SpeedConnection:Disconnect()
+	end
+	
+	SpeedConnection = RunService.Heartbeat:Connect(function()
+		if not Features.SpeedBoost then return end
+		
+		local HRP = GetHumanoidRootPart()
+		if HRP then
+			local Humanoid = GetHumanoid()
+			if Humanoid then
+				Humanoid.WalkSpeed = SpeedAmount
+			end
+		end
+	end)
+	
+	Rayfield:Notify({
+		Title = "Speed Boost Ativado",
+		Content = "Velocidade aumentada para " .. SpeedAmount,
+		Duration = 4.5,
+		Image = 4483362458,
+	})
+end
+
+local function StopSpeedBoost()
+	if SpeedConnection then
+		SpeedConnection:Disconnect()
+		SpeedConnection = nil
+	end
+	
+	local Humanoid = GetHumanoid()
+	if Humanoid then
+		Humanoid.WalkSpeed = 16
+	end
+end
+
+-- ============================================
+-- JUMP BOOST
+-- ============================================
+
+local function StartJumpBoost(JumpAmount)
+	if JumpConnection then
+		JumpConnection:Disconnect()
+	end
+	
+	JumpConnection = RunService.Heartbeat:Connect(function()
+		if not Features.JumpBoost then return end
+		
+		local Humanoid = GetHumanoid()
+		if Humanoid then
+			Humanoid.JumpPower = JumpAmount
+		end
+	end)
+	
+	Rayfield:Notify({
+		Title = "Jump Boost Ativado",
+		Content = "Pulo aumentado para " .. JumpAmount,
+		Duration = 4.5,
+		Image = 4483362458,
+	})
+end
+
+local function StopJumpBoost()
+	if JumpConnection then
+		JumpConnection:Disconnect()
+		JumpConnection = nil
+	end
+	
+	local Humanoid = GetHumanoid()
+	if Humanoid then
+		Humanoid.JumpPower = 50
+	end
+end
+
+-- ============================================
+-- NOCLIP
+-- ============================================
+
+local function StartNoClip()
+	if NoClipConnection then
+		NoClipConnection:Disconnect()
+	end
+	
+	NoClipConnection = RunService.Heartbeat:Connect(function()
+		if not Features.NoClip then return end
+		
+		local Character = GetCharacter()
+		if Character then
+			for _, Part in pairs(Character:GetDescendants()) do
+				if Part:IsA("BasePart") then
+					Part.CanCollide = false
+				end
+			end
+		end
+	end)
+	
+	Rayfield:Notify({
+		Title = "NoClip Ativado",
+		Content = "Você pode atravessar paredes!",
+		Duration = 4.5,
+		Image = 4483362458,
+	})
+end
+
+local function StopNoClip()
+	if NoClipConnection then
+		NoClipConnection:Disconnect()
+		NoClipConnection = nil
+	end
+	
+	local Character = GetCharacter()
+	if Character then
+		for _, Part in pairs(Character:GetDescendants()) do
+			if Part:IsA("BasePart") then
+				Part.CanCollide = true
+			end
+		end
+	end
+end
+
+-- ============================================
+-- AUTO COLLECT COINS
+-- ============================================
+
+local function IsCoinPart(Part)
+	if not Part or not Part:IsA("BasePart") then return false end
+	
+	local Name = Part.Name:lower()
+	local ParentName = Part.Parent and Part.Parent.Name:lower() or ""
+	
+	-- Moedas de eventos especificos do Fuja do Tsunami
+	local CoinPatterns = {
+		-- Eventos principais
+		"coin", "moeda", "cash", "money", "reward",
+		-- Eventos especificos - Atuais
+		"arcadecoin", "arcade",
+		"galaxycoin", "galaxy",
+		"radioactivecoin", "radioactive", "radioativo",
+		"tradetoken", "token",
+		"phantomcoin", "phantom",
+		"mysterybox", "mystery",
+		-- Eventos Fire and Ice
+		"fireandice", "fire", "ice", "firecoin", "icecoin",
+		"flamecoin", "frostcoin", "inferno", "blizzard",
+		"lava", "frozen", "heat", "cold",
+		-- Eventos Candy
+		"candy", "candycoin", "doce", "docecoin", "chocolate",
+		"lollipop", "caramelo", "gummy", "sweet", "dessert",
+		"taffy", "fudge", "marshmallow",
+		-- Outros eventos
+		"eventcoin", "event",
+		"specialcoin", "special",
+		"bonuscoin", "bonus",
+		"treasurecoin", "treasure",
+		"goldcoin", "gold",
+		"silvercoin", "silver",
+		"diamondcoin", "diamond",
+		"epiccoin", "epic",
+		"legendcoin", "legend",
+		"mythicalcoin", "mythical",
+		"secretcoin", "secret",
+		"rarecoin", "rare",
+		"uncommon", "common",
+		-- Eventos sazonais
+		"halloween", "christmas", "easter", "valentines",
+		"summer", "winter", "spring", "autumn",
+		"seasonal", "limited", "exclusive",
+		-- Outros padroes
+		"collectible", "pickup",
+		"drop", "loot", "item",
+		"premium", "vip", "pass",
+		"battle", "quest", "mission",
+		"daily", "weekly", "monthly"
+	}
+	
+	-- Verifica se o nome ou parent contem padroes de moedas
+	for _, Pattern in pairs(CoinPatterns) do
+		if Name:find(Pattern) or ParentName:find(Pattern) then
+			return true
+		end
+	end
+	
+	-- Verifica por propriedades visuais (moedas geralmente sao pequenas e redondas)
+	if Part:IsA("BasePart") then
+		local Size = Part.Size
+		local IsSmall = Size.X < 3 and Size.Y < 3 and Size.Z < 3
+		local IsRound = Part.Shape == Enum.PartType.Ball
+		
+		-- Se for pequeno e redondo, pode ser uma moeda
+		if IsSmall and IsRound then
+			return true
+		end
+	end
+	
+	return false
+end
+
+local function StartAutoCollect()
+	if AutoCollectConnection then
+		AutoCollectConnection:Disconnect()
+	end
+	
+	AutoCollectConnection = RunService.Heartbeat:Connect(function()
+		if not Features.AutoCollect then return end
+		
+		local HRP = GetHumanoidRootPart()
+		if not HRP then return end
+		
+		local Workspace = game:GetService("Workspace")
+		
+		-- Procura por coins em um raio de 150 studs (aumentado para melhor cobertura)
+		local CoinsNearby = Workspace:FindPartBySphere(HRP.Position, 150)
+		
+		for _, Part in pairs(CoinsNearby) do
+			if Part and IsCoinPart(Part) then
+				-- Teleporta o coin para o player
+				Part.CFrame = HRP.CFrame
+			end
+		end
+	end)
+	
+	Rayfield:Notify({
+		Title = "Auto Collect Ativado",
+		Content = "Coletando coins automaticamente!",
+		Duration = 4.5,
+		Image = 4483362458,
+	})
+end
+
+local function StopAutoCollect()
+	if AutoCollectConnection then
+		AutoCollectConnection:Disconnect()
+		AutoCollectConnection = nil
+	end
+	
+	Rayfield:Notify({
+		Title = "Auto Collect Desativado",
+		Content = "Auto Collect foi desligado!",
+		Duration = 4.5,
+		Image = 4483362458,
+	})
+end
+
+-- ============================================
+-- TELEPORT TO PLAYERS
+-- ============================================
+
+local function TeleportToNearestPlayer()
+	local NearestPlayer = GetNearestPlayer()
+	if NearestPlayer then
+		local PlayerChar = NearestPlayer.Character
+		if PlayerChar then
+			local PlayerHRP = PlayerChar:FindFirstChild("HumanoidRootPart")
+			if PlayerHRP then
+				TeleportTo(PlayerHRP.Position + Vector3.new(0, 5, 0))
+				Rayfield:Notify({
+					Title = "Teleportado",
+					Content = "Teleportado para " .. NearestPlayer.Name,
+					Duration = 4.5,
+					Image = 4483362458,
+				})
+			end
+		end
+	end
+end
+
+-- ============================================
+-- TABS E INTERFACE
+-- ============================================
+
+-- TAB: COMBAT
+local CombatTab = Window:CreateTab("⚔️ Combat", 4483362458)
+
+CombatTab:CreateToggle({
+	Name = "AutoFarm",
+	Callback = function(Value)
+		Features.AutoFarm = Value
+		if Value then
+			StartAutoFarm()
+		else
+			StopAutoFarm()
+		end
+	end,
+})
+
+CombatTab:CreateToggle({
+	Name = "Godmode",
+	Callback = function(Value)
+		Features.Godmode = Value
+		if Value then
+			StartGodmode()
+		else
+			StopGodmode()
+		end
+	end,
+})
+
+CombatTab:CreateToggle({
+	Name = "Auto Collect Coins",
+	Callback = function(Value)
+		Features.AutoCollect = Value
+		if Value then
+			StartAutoCollect()
+		else
+			StopAutoCollect()
+		end
+	end,
+})
+
+-- TAB: PLAYER
+local PlayerTab = Window:CreateTab("👤 Player", 4483362458)
+
+PlayerTab:CreateSlider({
+	Name = "Speed Boost",
+	Min = 16,
+	Max = 2000,
+	Default = 16,
+	Color = Color3.fromRGB(255, 107, 53),
+	Increment = 1,
+	Suffix = " Speed",
+	Callback = function(Value)
+		if Features.SpeedBoost then
+			StartSpeedBoost(Value)
+		end
+	end,
+})
+
+PlayerTab:CreateToggle({
+	Name = "Enable Speed Boost",
+	Callback = function(Value)
+		Features.SpeedBoost = Value
+		if Value then
+			StartSpeedBoost(50)
+		else
+			StopSpeedBoost()
+		end
+	end,
+})
+
+PlayerTab:CreateSlider({
+	Name = "Jump Boost",
+	Min = 50,
+	Max = 2000,
+	Default = 50,
+	Color = Color3.fromRGB(255, 107, 53),
+	Increment = 10,
+	Suffix = " Jump",
+	Callback = function(Value)
+		if Features.JumpBoost then
+			StartJumpBoost(Value)
+		end
+	end,
+})
+
+PlayerTab:CreateToggle({
+	Name = "Enable Jump Boost",
+	Callback = function(Value)
+		Features.JumpBoost = Value
+		if Value then
+			StartJumpBoost(100)
+		else
+			StopJumpBoost()
+		end
+	end,
+})
+
+PlayerTab:CreateToggle({
+	Name = "NoClip",
+	Callback = function(Value)
+		Features.NoClip = Value
+		if Value then
+			StartNoClip()
+		else
+			StopNoClip()
+		end
+	end,
+})
+
+-- TAB: TELEPORT
+local TeleportTab = Window:CreateTab("🌐 Teleport", 4483362458)
+
+TeleportTab:CreateButton({
+	Name = "Teleport to Nearest Player",
+	Callback = function()
+		TeleportToNearestPlayer()
+	end,
+})
+
+TeleportTab:CreateButton({
+	Name = "Teleport to Spawn",
+	Callback = function()
+		TeleportTo(Vector3.new(0, 50, 0))
+		Rayfield:Notify({
+			Title = "Teleportado",
+			Content = "Teleportado para o spawn!",
+			Duration = 4.5,
+			Image = 4483362458,
+		})
+	end,
+})
+
+-- TAB: SETTINGS
+local SettingsTab = Window:CreateTab("⚙️ Settings", 4483362458)
+
+SettingsTab:CreateLabel("LORDHUB v1.0")
+SettingsTab:CreateLabel("Fuja do Tsunami pra Brainrots")
+SettingsTab:CreateLabel("Desenvolvido por LORDHUB")
+SettingsTab:CreateLabel("")
+
+SettingsTab:CreateButton({
+	Name = "Desativar Todas as Features",
+	Callback = function()
+		Features.AutoFarm = false
+		Features.Godmode = false
+		Features.SpeedBoost = false
+		Features.JumpBoost = false
+		Features.NoClip = false
+		Features.AutoCollect = false
+		
+		StopAutoFarm()
+		StopGodmode()
+		StopSpeedBoost()
+		StopJumpBoost()
+		StopNoClip()
+		StopAutoCollect()
+		
+		Rayfield:Notify({
+			Title = "Todas as Features Desativadas",
+			Content = "Todas as features foram desligadas!",
+			Duration = 4.5,
+			Image = 4483362458,
+		})
+	end,
+})
+
+SettingsTab:CreateButton({
+	Name = "Destruir Interface",
+	Callback = function()
+		Window:Close()
+	end,
+})
+
+-- ============================================
+-- CLEANUP
+-- ============================================
+
+LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
+	Character = NewCharacter
+	Humanoid = Character:WaitForChild("Humanoid")
+	
+	-- Reaplica features ativas após respawn
+	if Features.Godmode then
+		StartGodmode()
+	end
+	if Features.SpeedBoost then
+		StartSpeedBoost(50)
+	end
+	if Features.JumpBoost then
+		StartJumpBoost(100)
+	end
+	if Features.NoClip then
+		StartNoClip()
+	end
+	if Features.AutoCollect then
+		StartAutoCollect()
+	end
+end)
+
+Rayfield:SetNotification({
+	Title = "LORDHUB v1.0 Carregado",
+	Content = "Script carregado com sucesso! Aproveite!",
+	Duration = 6.5,
+	Image = 4483362458,
+})
+
+print("✅ LORDHUB v1.0 - Script carregado com sucesso!")
